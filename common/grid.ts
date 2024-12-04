@@ -21,6 +21,19 @@ export function getNSEW(x: number, y: number) {
   ];
 }
 
+export function getDirections(): [number, number][] {
+  return [
+    [-1, -1],
+    [-1, 0],
+    [-1, 1],
+    [0, -1],
+    [0, 1],
+    [1, -1],
+    [1, 0],
+    [1, 1],
+  ];
+}
+
 export function toKey(x: any, y: any) {
   return `${x}|${y}`;
 }
