@@ -21,6 +21,15 @@ export function getNSEW(x: number, y: number) {
   ];
 }
 
+export function getDiagonals(x: number, y: number) {
+  return [
+    [y - 1, x + 1], // NE
+    [y + 1, x + 1], // SE
+    [y + 1, x - 1], // SW
+    [y - 1, x - 1], // NW
+  ];
+}
+
 export function getDirections(): [number, number][] {
   return [
     [-1, -1],
