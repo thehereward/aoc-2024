@@ -57,10 +57,10 @@ export function asKey(point: number[]): string {
 }
 
 export function make2DGrid<T>(xMax: number, yMax: number, fill: T) {
-  const grid: Record<string, T> = {};
+  const grid: Map<string, T> = new Map();
   for (var yy = -1; yy <= yMax; yy++) {
     for (var xx = -1; xx <= xMax; xx++) {
-      grid[toKey(xx, yy)] = fill;
+      grid.set(toKey(xx, yy), fill);
     }
   }
   return grid;
@@ -69,13 +69,17 @@ export function make2DGrid<T>(xMax: number, yMax: number, fill: T) {
 export function printGrid(
   grid: Map<string, string>,
   xMax: number,
-  yMax: number
+  yMax: number,
+  print = true
 ) {
+  const lines = [];
   for (var y = 0; y <= yMax; y++) {
     const line: string[] = [];
     for (var x = 0; x <= xMax; x++) {
       line.push(grid.get(toKey(x, y)) || " ");
     }
-    console.log(line.join(""));
+    lines.push(line.join(""));
+    if (print) console.log(line.join(""));
   }
+  return lines;
 }

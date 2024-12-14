@@ -22,6 +22,10 @@ export class Vector2 {
   isOrigin(): boolean {
     return this.x == 0 && this.y == 0;
   }
+
+  scale(by: number): Vector2 {
+    return new Vector2(this.x * by, this.y * by);
+  }
 }
 
 export type NESW = "N" | "E" | "S" | "W";
