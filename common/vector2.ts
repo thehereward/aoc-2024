@@ -26,6 +26,10 @@ export class Vector2 {
   scale(by: number): Vector2 {
     return new Vector2(this.x * by, this.y * by);
   }
+
+  copy(): Vector2 {
+    return new Vector2(this.x, this.y);
+  }
 }
 
 export type NESW = "N" | "E" | "S" | "W";
