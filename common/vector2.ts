@@ -8,6 +8,10 @@ export class Vector2 {
   }
 
   toString(): string {
+    return `x: ${this.x} | y: ${this.y}`;
+  }
+
+  toKey(): string {
     return `${this.x}|${this.y}`;
   }
 
@@ -29,6 +33,22 @@ export class Vector2 {
 
   copy(): Vector2 {
     return new Vector2(this.x, this.y);
+  }
+
+  equals(other: Vector2): boolean {
+    return other.x === this.x && other.y === this.y;
+  }
+
+  rotateRight(): Vector2 {
+    return new Vector2(this.y, -this.x);
+  }
+
+  rotateLeft(): Vector2 {
+    return new Vector2(-this.y, this.x);
+  }
+
+  getManhattanDistance(): number {
+    return this.y + this.x;
   }
 }
 
