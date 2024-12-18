@@ -83,3 +83,13 @@ export function printGrid(
   }
   return lines;
 }
+
+export function makeInbounds(
+  xMin: number,
+  xMax: number,
+  yMin: number,
+  yMax: number
+): (x: number, y: number) => boolean {
+  return (x: number, y: number): boolean =>
+    x >= xMin && x <= xMax && y >= yMin && y <= yMax;
+}

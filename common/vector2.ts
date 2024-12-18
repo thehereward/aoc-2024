@@ -48,7 +48,7 @@ export class Vector2 {
   }
 
   getManhattanDistance(): number {
-    return this.y + this.x;
+    return Math.abs(this.y) + Math.abs(this.x);
   }
 }
 
@@ -60,6 +60,10 @@ export const Cardinal: Record<NESW, Vector2> = {
   S: new Vector2(0, +1),
   W: new Vector2(-1, 0),
 };
+
+export function getCardinal(): Vector2[] {
+  return [Cardinal.N, Cardinal.E, Cardinal.S, Cardinal.W];
+}
 
 export function solve2DMatrix([A, B]: [Vector2, Vector2], Result: Vector2) {
   const det = A.x * B.y - A.y * B.x;
