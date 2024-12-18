@@ -1,6 +1,7 @@
 import { readFile, getTimeLogger, assertDefined } from "../common";
 import { makeInbounds, toKey } from "../common/grid";
 import { getCardinal, Vector2 } from "../common/vector2";
+import { findShortestRoute, type NodePlusCost } from "../common/a-star";
 
 const logTime = getTimeLogger();
 
@@ -19,20 +20,6 @@ const end = new Vector2(xMax, yMax);
 
 const bytes = data.map((line) => line.split(",").map((c) => parseInt(c)));
 
-interface Historians {
-  pos: Vector2;
-  score: number;
-  history: Vector2[];
-  predictedScore: number;
-}
-
-const historians: Historians = {
-  pos: start.copy(),
-  score: 0,
-  history: [start],
-  predictedScore: Infinity,
-};
-
 function dropBytes(bytesToDrop: number) {
   const corrupt: Set<string> = new Set();
 
@@ -43,79 +30,31 @@ function dropBytes(bytesToDrop: number) {
   return corrupt;
 }
 
-function copy(historians: Historians): Historians {
-  return {
-    pos: historians.pos.copy(),
-    score: historians.score,
-    history: historians.history.slice(),
-    predictedScore: historians.predictedScore,
+function getStart() {
+  return start.copy();
+}
+
+function makeGetNext(obstacles: Set<string>) {
+  return function getNext(node: Vector2): NodePlusCost<Vector2>[] {
+    return getCardinal()
+      .map((n) => node.add(n))
+      .filter((n) => inBounds(n.x, n.y))
+      .filter((n) => !obstacles.has(n.toKey()))
+      .map((n) => {
+        return {
+          node: n,
+          cost: 1,
+        };
+      });
   };
 }
 
-function historianToKey(historians: Historians) {
-  return historians.pos.toKey();
-}
+const hash = (node: Vector2): string => node.toKey();
 
-function getNext(historians: Historians): Historians[] {
-  const next = getCardinal();
-  return next.map((n) => {
-    const newPost = historians.pos.add(n);
-    return {
-      pos: newPost,
-      score: historians.score + 1,
-      history: historians.history.slice().concat(newPost),
-      predictedScore:
-        historians.score + 1 + newPost.subtract(end).getManhattanDistance(),
-    };
-  });
-}
-
-function findShortestRoute(start: Historians, obstacles: Set<string>) {
-  const minCosts: Map<string, number> = new Map();
-  minCosts.set(historianToKey(start), 0);
-  var unvisited: Historians[] = [copy(start)];
-  var cheapestScore = Infinity;
-  do {
-    unvisited.sort((a, b) => a.predictedScore - b.predictedScore);
-
-    const current = assertDefined(unvisited.shift());
-
-    const currentKey = historianToKey(current);
-    const minCost = assertDefined(minCosts.get(currentKey));
-    if (current.score > minCost) continue;
-
-    if (current.pos.equals(end)) {
-      cheapestScore = Math.min(current.score, cheapestScore);
-      unvisited = unvisited.filter((a) => a.score < cheapestScore);
-      continue;
-    }
-    const next = getNext(current);
-    next
-      .filter((n) => inBounds(n.pos.x, n.pos.y))
-      .filter((n) => !obstacles.has(n.pos.toKey()))
-      .filter((n) => {
-        const key = historianToKey(n);
-        if (!minCosts.has(key)) {
-          return true;
-        }
-        const minCost = minCosts.get(key);
-        if (minCost == undefined) throw "panic";
-        return minCost > n.score;
-      })
-      .filter(
-        (n) =>
-          !unvisited.some((un) => un.pos.equals(n.pos) && un.score <= n.score)
-      )
-      .forEach((nn) => {
-        unvisited.push(nn);
-        minCosts.set(nn.pos.toKey(), nn.score);
-      });
-  } while (unvisited.length > 0);
-  return cheapestScore;
-}
+const success = (node: Vector2): boolean => node.equals(end);
 
 const corrupt: Set<string> = dropBytes(MAX_MEM);
-const part1 = findShortestRoute(historians, corrupt);
+const part1 = findShortestRoute(getStart, makeGetNext(corrupt), hash, success);
 
 console.log({ part1 });
 
@@ -127,7 +66,12 @@ var high = bytes.length;
 do {
   var test = Math.floor((high - low) / 2) + low;
   var obstacles = dropBytes(test);
-  const shortest = findShortestRoute(historians, obstacles);
+  const shortest = findShortestRoute(
+    getStart,
+    makeGetNext(obstacles),
+    hash,
+    success
+  );
 
   if (shortest < Infinity) {
     low = test;
