@@ -54,7 +54,12 @@ const hash = (node: Vector2): string => node.toKey();
 const success = (node: Vector2): boolean => node.equals(end);
 
 const corrupt: Set<string> = dropBytes(MAX_MEM);
-const part1 = findShortestRoute(getStart, makeGetNext(corrupt), hash, success);
+const { lowestCost: part1 } = findShortestRoute(
+  getStart,
+  makeGetNext(corrupt),
+  hash,
+  success
+);
 
 console.log({ part1 });
 
@@ -66,7 +71,7 @@ var high = bytes.length;
 do {
   var test = Math.floor((high - low) / 2) + low;
   var obstacles = dropBytes(test);
-  const shortest = findShortestRoute(
+  const { lowestCost: shortest } = findShortestRoute(
     getStart,
     makeGetNext(obstacles),
     hash,

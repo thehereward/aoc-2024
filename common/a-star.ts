@@ -17,14 +17,16 @@ export function findShortestRoute<T>(
   getStart: () => T,
   getNext: (node: T) => NodePlusCost<T>[],
   hash: (node: T) => string,
-  testSuccess: (node: T) => boolean
+  testSuccess: (node: T) => boolean,
+  costLimit?: number
 ) {
   const start = getStart();
+  var solutions: CostedNode<T>[] = [];
 
   const costedNode: CostedNode<T> = {
     pos: start,
     score: 0,
-    history: [start],
+    history: [],
     predictedScore: Infinity,
   };
   const minCosts: Map<string, number> = new Map();
@@ -40,10 +42,15 @@ export function findShortestRoute<T>(
     const currentKey = hash(current.pos);
     const minCost = assertDefined(minCosts.get(currentKey));
     if (current.score > minCost) continue;
+    if (costLimit != undefined && current.score > costLimit) break;
 
     if (testSuccess(current.pos)) {
+      if (current.score < lowestCost) {
+        solutions = [];
+      }
       lowestCost = Math.min(current.score, lowestCost);
-      unvisited = unvisited.filter((a) => a.score < lowestCost);
+      current.history.push(current.pos);
+      solutions.push(current);
       continue;
     }
     const next = getNext(current.pos);
@@ -54,6 +61,7 @@ export function findShortestRoute<T>(
           pos: n.node,
           score: current.score + n.cost,
           predictedScore: current.score + n.cost + (n.heuristic || 0),
+          history: current.history.slice().concat(current.pos),
         };
       })
       .filter((n) => {
@@ -76,5 +84,5 @@ export function findShortestRoute<T>(
         minCosts.set(hash(nn.pos), nn.score);
       });
   } while (unvisited.length > 0);
-  return lowestCost;
+  return { lowestCost, solutions };
 }
