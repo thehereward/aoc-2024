@@ -39,6 +39,7 @@ export function findShortestRoute<T>(
 
     const current = assertDefined(unvisited.shift());
 
+    if (current.score > lowestCost) continue;
     const currentKey = hash(current.pos);
     const minCost = assertDefined(minCosts.get(currentKey));
     if (current.score > minCost) continue;

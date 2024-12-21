@@ -1,10 +1,9 @@
-import { dir, log } from "console";
+import { Console, dir, log } from "console";
 import { readFile, getTimeLogger, sum } from "../common";
 import { makeInbounds } from "../common/grid";
 import { Cardinal, getCardinal, Vector2 } from "../common/vector2";
-import { EOL } from "os";
 import { findShortestRoute } from "../common/a-star";
-import { isStringLiteralOrJsxExpression } from "typescript";
+import { EOL } from "os";
 
 const logTime = getTimeLogger();
 
@@ -20,6 +19,13 @@ const directionalString = `
  |^|A
 <|v|>
 `;
+
+function toGrid(str: string) {
+  return str
+    .split(EOL)
+    .filter((l) => l.length > 0)
+    .map((l) => l.split("|"));
+}
 
 const numeric = toGrid(numericString);
 const directional = toGrid(directionalString);
@@ -39,64 +45,36 @@ const makeMap = (grid: string[][]) => {
 const nMap = makeMap(numeric);
 const dMap = makeMap(directional);
 
-// console.log({ nMap });
-// console.log({ dMap });
-
-function toGrid(str: string) {
-  return str
-    .split(EOL)
-    .filter((l) => l.length > 0)
-    .map((l) => l.split("|"));
-}
-
 function fromMap(map: string[][], vector: Vector2): string {
   return map[vector.y][vector.x];
 }
 
-const makeBounds = (grid: string[][]) => {
-  const xMin = 0;
-  const yMin = 0;
-  const xMax = grid[0].length - 1;
-  const yMax = grid.length - 1;
-  const inBounds = makeInbounds(xMin, xMax, yMin, yMax);
+function permute<T>(arr: T[]): T[][] {
+  let result: T[][] = [];
+  if (arr.length === 0) return [];
+  if (arr.length === 1) return [arr];
+  for (let i = 0; i < arr.length; i++) {
+    const currentNum = arr[i];
+    const remainingNums = arr.slice(0, i).concat(arr.slice(i + 1));
+    const remainingNumsPermuted = permute(remainingNums);
+    for (let j = 0; j < remainingNumsPermuted.length; j++) {
+      const permutedArray = [currentNum].concat(remainingNumsPermuted[j]);
+      result.push(permutedArray);
+    }
+  }
+  return result;
+}
 
-  return (vector: Vector2): boolean => {
-    return inBounds(vector.x, vector.y) && fromMap(grid, vector) != " ";
-  };
-};
+function findRoute(a: string, b: string) {
+  const { x, y } = nMap.get(b)!.subtract(nMap.get(a)!);
+
+  const h = x < 0 ? "<".repeat(Math.abs(x)) : ">".repeat(x);
+  const v = y < 0 ? "^".repeat(Math.abs(y)) : "v".repeat(y);
+  return permute([h.split(""), v.split("")].flatMap((v) => v));
+}
 
 const numericStart = nMap.get("A")!.copy();
 const directionalStart = dMap.get("A")!.copy();
-
-const isNBounds = makeBounds(numeric);
-const isDBounds = makeBounds(directional);
-
-const first = data[0].split("");
-
-function findRoute(
-  start: Vector2,
-  end: Vector2,
-  inBounds: (vec: Vector2) => boolean
-) {
-  function getNextN(vector: Vector2) {
-    return getCardinal()
-      .map((c) => c.add(vector))
-      .filter((v) => inBounds(v))
-      .map((n) => {
-        return {
-          node: n,
-          cost: 1,
-        };
-      });
-  }
-
-  return findShortestRoute(
-    () => start.copy(),
-    getNextN,
-    (v: Vector2) => v.toKey(),
-    (v: Vector2) => v.equals(end)
-  );
-}
 
 type Direction = "^" | "v" | "<" | ">";
 
@@ -116,6 +94,8 @@ function getDir(str: Direction): Vector2 {
 class Robot {
   location: Vector2;
   map: string[][];
+  robot: Robot | undefined;
+  log: string[] = [];
 
   inBounds = (): boolean => {
     const xMin = 0;
@@ -126,10 +106,21 @@ class Robot {
 
     return inBounds(this.location.x, this.location.y);
   };
+  name: string;
 
-  constructor(map: string[][], start: Vector2) {
+  constructor(name: string, map: string[][], start: Vector2, robot?: Robot) {
     this.location = start;
     this.map = map;
+    this.robot = robot;
+    this.name = name;
+  }
+
+  press(key: DirectionalButton) {
+    if (key == "A") {
+      this.value();
+    } else {
+      this.move(key);
+    }
   }
 
   move(str: Direction) {
@@ -138,10 +129,20 @@ class Robot {
 
   value(): string {
     if (this.inBounds()) {
-      return fromMap(this.map, this.location);
+      const key = fromMap(this.map, this.location);
+      if (this.robot) {
+        this.robot.press(key as DirectionalButton);
+      } else {
+        this.log.push(key);
+      }
+      return key;
     } else {
       return "#";
     }
+  }
+
+  getLog() {
+    return this.log;
   }
 
   toString(): string {
@@ -149,113 +150,115 @@ class Robot {
   }
 }
 
-const robot1 = new Robot(directional, directionalStart.copy());
-const robot2 = new Robot(directional, directionalStart.copy());
-const robot3 = new Robot(numeric, numericStart.copy());
-
 type DirectionalButton = Direction | "A";
-type NumericalButton = string;
 
 var output: string[] = [];
 
-function pressButton(str: DirectionalButton) {
-  if (str == "A") {
-    const val = robot1.value();
-    pressButton2(val as DirectionalButton);
-  } else {
-    robot1.move(str);
-  }
-  //   console.log(`Robot 1: ${robot1.toString()}`);
-}
+const getRobotMap = () => {
+  const N = "<A";
+  const S = "<vA";
+  const E = "vA";
+  const W = "v<<A";
 
-function pressButton2(str: DirectionalButton) {
-  if (str == "A") {
-    const val = robot2.value();
-    pressButton3(val as DirectionalButton);
-    // console.log(`Robot 2 pressed: ${val}`);
-  } else {
-    robot2.move(str);
-  }
-  //   console.log(`Robot 2: ${robot2.toString()}`);
-}
+  const NA = `${N}>A`;
+  const SA = `${S}^>A`;
+  const EA = `${E}^A`;
+  const WA = `${W}>>^A`;
+  const A = "A";
 
-function pressButton3(str: DirectionalButton) {
-  if (str == "A") {
-    const val = robot3.value();
-    output.push(val);
-    // console.log(`OUTPUT: ${val}`);
-  } else {
-    robot3.move(str);
-  }
-  //   console.log(`Robot 3: ${robot3.toString()}`);
-}
+  const robot2Map = new Map<
+    DirectionalButton,
+    Map<DirectionalButton, string>
+  >();
+  const robot2AMap = new Map<DirectionalButton, string>();
+  robot2AMap.set("^", "v<<A>>^A");
+  robot2AMap.set("<", "<vA<AA>>^A");
+  robot2AMap.set(">", "<vA^>A");
+  robot2AMap.set("v", "<vA<A>>^A");
+  robot2AMap.set("A", "A");
+  robot2Map.set("A", robot2AMap);
 
-// HUMAN --> 2nd ROBOT
-// A to...
-// ^  8 v<<A>>^A
-// < 10 <vA<AA>>^A
-// >  6 <vA^>A
-// v  9 <vA<A>>^A
-// A  1 A
+  const robot2UpMap = new Map<DirectionalButton, string>();
+  robot2UpMap.set("^", "A");
+  robot2UpMap.set("<", "v<A<A>>^A");
+  robot2UpMap.set(">", "v<A>A^A");
+  robot2UpMap.set("v", "v<A^>A");
+  robot2UpMap.set("A", EA);
+  robot2Map.set("^", robot2UpMap);
 
-// ^ to...
-// ^  1 A
-// <  9 v<A<A>>^A
-// >  7 v<A>A^A
-// v    v<A^>A
-// A  1 vA^A
+  const robot2DownMap = new Map<DirectionalButton, string>();
+  robot2DownMap.set("^", NA);
+  robot2DownMap.set("<", WA);
+  robot2DownMap.set(">", EA);
+  robot2DownMap.set("v", A);
+  robot2DownMap.set("A", ["vA^<A>A"].join(""));
+  robot2Map.set("v", robot2DownMap);
 
-const N = "<A";
-const S = "<vA";
-const E = "vA";
-const W = "v<<A";
+  const robot2RightMap = new Map<DirectionalButton, string>();
+  robot2RightMap.set("^", ["<Av<A>>^A"].join(""));
+  robot2RightMap.set("<", "v<<AA>>^A");
+  robot2RightMap.set(">", A);
+  robot2RightMap.set("v", WA);
+  robot2RightMap.set("A", [NA].join(""));
+  robot2Map.set(">", robot2RightMap);
 
-const NA = `${N}>A`;
-const SA = `${S}^>A`;
-const EA = `${E}^A`;
-const WA = `${W}>>^A`;
-const A = "A";
+  const robot2LeftMap = new Map<DirectionalButton, string>();
+  robot2LeftMap.set("^", "vA<^A>A");
+  robot2LeftMap.set("<", "A");
+  robot2LeftMap.set(">", "vAA^A");
+  robot2LeftMap.set("v", EA);
+  robot2LeftMap.set("A", "vAA^<A>A");
+  robot2Map.set("<", robot2LeftMap);
+  return robot2Map;
+};
 
-const robot2Map = new Map<DirectionalButton, Map<DirectionalButton, string>>();
-const robot2AMap = new Map<DirectionalButton, string>();
-robot2AMap.set("^", "v<<A>>^A");
-robot2AMap.set("<", "<vA<AA>>^A");
-robot2AMap.set(">", "<vA^>A");
-robot2AMap.set("v", "<vA<A>>^A");
-robot2AMap.set("A", "A");
-robot2Map.set("A", robot2AMap);
+const get1TierMap = () => {
+  const robot2Map = new Map<
+    DirectionalButton,
+    Map<DirectionalButton, string[]>
+  >();
+  const robot2AMap = new Map<DirectionalButton, string[]>();
+  robot2AMap.set("^", ["<A"]);
+  robot2AMap.set("<", ["v<<A"]);
+  robot2AMap.set(">", ["vA"]);
+  robot2AMap.set("v", ["<vA"]);
+  robot2AMap.set("A", ["A"]);
+  robot2Map.set("A", robot2AMap);
 
-const robot2UpMap = new Map<DirectionalButton, string>();
-robot2UpMap.set("^", "A");
-robot2UpMap.set("<", "v<A<A>>^A");
-robot2UpMap.set(">", "v<A>A^A");
-robot2UpMap.set("v", "v<A^>A");
-robot2UpMap.set("A", EA);
-robot2Map.set("^", robot2UpMap);
+  const robot2UpMap = new Map<DirectionalButton, string[]>();
+  robot2UpMap.set("^", ["A"]);
+  robot2UpMap.set("<", ["v<A"]);
+  robot2UpMap.set(">", ["v>A"]);
+  robot2UpMap.set("v", ["vA"]);
+  robot2UpMap.set("A", [">A"]);
+  robot2Map.set("^", robot2UpMap);
 
-const robot2DownMap = new Map<DirectionalButton, string>();
-robot2DownMap.set("^", NA);
-robot2DownMap.set("<", WA);
-robot2DownMap.set(">", EA);
-robot2DownMap.set("v", A);
-robot2DownMap.set("A", ["vA^", NA].join(""));
-robot2Map.set("v", robot2DownMap);
+  const robot2DownMap = new Map<DirectionalButton, string[]>();
+  robot2DownMap.set("^", ["^A"]);
+  robot2DownMap.set("<", ["<A"]);
+  robot2DownMap.set(">", [">A"]);
+  robot2DownMap.set("v", ["A"]);
+  robot2DownMap.set("A", ["^>A"]);
+  robot2Map.set("v", robot2DownMap);
 
-const robot2RightMap = new Map<DirectionalButton, string>();
-robot2RightMap.set("^", ["<Av<A>>^A"].join(""));
-robot2RightMap.set("<", "v<<AA>>^A");
-robot2RightMap.set(">", A);
-robot2RightMap.set("v", WA);
-robot2RightMap.set("A", [NA].join(""));
-robot2Map.set(">", robot2RightMap);
+  const robot2RightMap = new Map<DirectionalButton, string[]>();
+  robot2RightMap.set("^", ["<^A"]), robot2RightMap.set("<", ["<<A"]);
+  robot2RightMap.set(">", ["A"]);
+  robot2RightMap.set("v", ["<A"]);
+  robot2RightMap.set("A", ["^A"]);
+  robot2Map.set(">", robot2RightMap);
 
-const robot2LeftMap = new Map<DirectionalButton, string>();
-robot2LeftMap.set("^", "vA<^A>A");
-robot2LeftMap.set("<", "A");
-robot2LeftMap.set(">", "vAA^A");
-robot2LeftMap.set("v", EA);
-robot2LeftMap.set("A", "vAA^<A>A");
-robot2Map.set("<", robot2LeftMap);
+  const robot2LeftMap = new Map<DirectionalButton, string[]>();
+  robot2LeftMap.set("^", [">^A"]);
+  robot2LeftMap.set("<", ["A"]);
+  robot2LeftMap.set(">", [">>A"]);
+  robot2LeftMap.set("v", [">A"]);
+  robot2LeftMap.set("A", [">>^A"]);
+  robot2Map.set("<", robot2LeftMap);
+  return robot2Map;
+};
+
+const robot2Map = getRobotMap();
 
 function findPath(path: string): string {
   var loc: DirectionalButton = "A";
@@ -270,71 +273,142 @@ function findPath(path: string): string {
   return input.join("");
 }
 
-const test = new Map<string, string>();
-test.set("029A", "<A^A^^>AvvvA");
-test.set("980A", "^^^A<AvvvA>A");
-test.set("179A", "^<<A^^A>>AvvvA");
-test.set("456A", "^^<<A>A>AvvA");
-test.set("379A", "^A<<^^A>>AvvvA");
+const finalRobot = new Robot("final bot", numeric, numericStart.copy());
 
-var testAnswers: number[] = [];
+const robots: Robot[] = [finalRobot];
+const NUMBER_OF_ROBOTS = 2;
+var lastRobot = finalRobot;
+for (var i = 0; i < NUMBER_OF_ROBOTS; i++) {
+  lastRobot = new Robot(
+    `robot-${i}`,
+    directional,
+    directionalStart.copy(),
+    lastRobot
+  );
+  robots.push(lastRobot);
+}
 
-test.forEach((v, k) => {
-  output = [];
-  const humanInput = findPath(v);
-  // console.log("h 1 2 3");
-  // console.log(`  ${robot1.value()} ${robot2.value()} ${robot3.value()}`);
-  humanInput.split("").forEach((s) => {
-    pressButton(s as DirectionalButton);
+const tier1Map = get1TierMap();
+
+function toParts(path: string): Map<string, number> {
+  const parts = path
+    .replaceAll("A", "A,")
+    .split(",")
+    .filter((l) => l.length > 0);
+  const partMap = new Map<string, number>();
+  parts.forEach((part) => {
+    partMap.set(part, (partMap.get(part) || 0) + 1);
   });
-  //   console.log(k);
-  //   console.log(output.join(""));
-  //   console.log(humanInput.length);
-  testAnswers.push(humanInput.length * parseInt(k.slice(0, 3)));
+  return partMap;
+}
+
+function find1TierPath(parts: Map<string, number>): Map<string, number> {
+  const result = new Map<string, number>();
+  parts.forEach((v, part) => {
+    var loc: DirectionalButton = "A";
+    var input: string[][] = [];
+
+    part
+      .split("")
+      .map((a) => a as DirectionalButton)
+      .forEach((char) => {
+        input.push(tier1Map.get(loc)!.get(char)!);
+        loc = char;
+      });
+    const partMap = toParts(input.join(""));
+    partMap.forEach((value, key) => {
+      result.set(key, (result.get(key) || 0) + value * v);
+    });
+  });
+  return result;
+}
+
+function followRoute(start: string, route: string[]) {
+  var loc = nMap.get(start)!;
+  var valid = true;
+  route.forEach((char) => {
+    loc = loc.add(getDir(char as Direction));
+    if (fromMap(numeric, loc) == " ") {
+      valid = false;
+    }
+  });
+  return valid;
+}
+
+const real = new Map<string, string[]>();
+data.forEach((line) => {
+  var last = "A";
+  var possible = new Set<string>();
+  possible.add("");
+  line.split("").forEach((char) => {
+    const routes = findRoute(last, char).filter((r) => followRoute(last, r));
+    last = char;
+
+    const res = new Set<string>();
+    routes.forEach((route) => {
+      possible.forEach((p) => {
+        res.add(p + route.join("") + "A");
+      });
+    });
+    possible = res;
+  });
+  real.set(line, [...possible]);
 });
 
-// console.log(testAnswers.reduce(sum));
-
-const real = new Map<string, string>();
-// real.set("208A", "^<AvA^^^A>vvvA");
-real.set("208A", "<^AvA^^^Avvv>A");
-real.set("586A", "<^^A^Av>AvvA");
-real.set("341A", "^A<<^AvA>>vA");
-real.set("463A", "^^<<A>>AvAvA");
-real.set("593A", "<^^A>^AvvAvA");
-
 const part1Answers: number[] = [];
-real.forEach((v, k) => {
-  output = [];
-  const humanInput = findPath(v);
-  // console.log("h 1 2 3");
-  // console.log(`  ${robot1.value()} ${robot2.value()} ${robot3.value()}`);
-  humanInput.split("").forEach((s) => {
-    pressButton(s as DirectionalButton);
+real.forEach((va, k) => {
+  var lowestCost = Infinity;
+  va.forEach((v) => {
+    var humanInput = toParts(v);
+
+    for (var i = 0; i < 2; i++) {
+      humanInput = find1TierPath(humanInput);
+    }
+    var total = 0;
+    humanInput.forEach((v, k) => {
+      total = total + v * k.length;
+    });
+    lowestCost = Math.min(lowestCost, total);
   });
-  //   console.log(k);
-  //   console.log(output.join(""));
-  //   console.log(humanInput.length);
-  part1Answers.push(humanInput.length * parseInt(k.slice(0, 3)));
+  part1Answers.push(lowestCost * parseInt(k.slice(0, 3)));
 });
 
 console.log({ part1: part1Answers.reduce(sum) });
-
-// const t = findRoute(nMap.get(first[1])!, nMap.get(first[2])!, isNBounds);
-// console.log(t.solutions.length);
-
-// console.log(first);
-
 logTime("Part 1");
+
+const part2Answers: number[] = [];
+real.forEach((va, k) => {
+  var lowestCost = Infinity;
+  va.forEach((v) => {
+    var humanInput = toParts(v);
+
+    for (var i = 0; i < 25; i++) {
+      humanInput = find1TierPath(humanInput);
+    }
+    var total = 0;
+    humanInput.forEach((v, k) => {
+      total = total + v * k.length;
+    });
+    lowestCost = Math.min(lowestCost, total);
+  });
+  part2Answers.push(lowestCost * parseInt(k.slice(0, 3)));
+});
+
+console.log({ part2: part2Answers.reduce(sum) });
+
+// 416181745525478 is too high
+// 412430699844124 is too high
+// 223049209024730 is not the right answer
+// 195664513288128 is the right answer
+// 162676216670724 is illegal
+// 162244939358336 is not the right answer - was illegal
+// 160596672031524 is too low -- was illegal
 
 logTime("Part 2");
 
 export {};
 
 // directional --> directional --> directional --> numeric
-
-// 0 <>A
-//
 
 // +---+---+---+
 // | 7 | 8 | 9 |
@@ -351,18 +425,3 @@ export {};
 // +---+---+---+
 // | < | v | > |
 // +---+---+---+
-
-//        0   2       9       A
-//    <   A ^ A >  ^^ A  vvv  A
-//    <   A ^ A >  ^^ A  vvv  A
-// v<<A>>^A<A>AvA<^AA>A<vAAA>^A
-
-// 029A: <vA<AA>>^AvAA<^A>A<v<A>>^AvA^A<vA>^A<v<A>^A>AAvA^A<v<A>A>^AAAvA<^A>A
-// rob1: ^vv<<<v>AA
-// rob2: AA>>v<<<<<
-// rob3: AAAAAAAAA0
-
-// 029A:  v<<A>>^A
-// rob1: A>v<<v>AA
-// rob2: AAAA^^^^^
-// rob3: AAAAAAAA3
