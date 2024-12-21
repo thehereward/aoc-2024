@@ -72,7 +72,7 @@ export function printGrid(
   yMax: number,
   print = true
 ) {
-  const lines = [];
+  const lines: string[] = [];
   for (var y = 0; y <= yMax; y++) {
     const line: string[] = [];
     for (var x = 0; x <= xMax; x++) {
