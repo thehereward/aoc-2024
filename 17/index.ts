@@ -255,7 +255,14 @@ const answers = newInputs.map(i => i/8n)
 answers.sort((a,b) => Number(a-b))
 // console.log({ answers });
 
+export const bigMax = (a: bigint, c: bigint): bigint => (a < c ? c : a);
 export const bigMin = (a: bigint, c: bigint): bigint => (a > c ? c : a);
+
+console.log(answers.length);
+
+const max = answers.reduce(bigMax);
+const min = answers.reduce(bigMin);
+console.log(max - min);
 
 
 console.log({part2: Number(answers.reduce(bigMin))});

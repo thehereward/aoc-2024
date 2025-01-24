@@ -123,8 +123,8 @@ const SWAPS = [
   ["z11", "wpd"],
   ["skh", "jqf"],
   ["z19", "mdd"],
-  ["wts", "z37"],
-  // ["rhh", "wts"]
+  // ["wts", "z37"],
+  ["rhh", "wts"]
 ]
 
 SWAPS.forEach(([a,b]) => swap(a,b))
@@ -305,15 +305,18 @@ rfq AND hbh -> pwb
 
 jgw OR rhh -> z37
 
+qtv OR khs -> rfq
+
+
 // CORRECT
 z37 = (pwb OR (y36 AND x36)) XOR (y37 XOR x37)   
 
 // INCORRECT
 z37 = ((pwb OR (y36 AND x36)) AND (y37 XOR x37 )) OR (y37 AND x37)
-
+z37 = ((y37 XOR x37) AND (pwb OR (y36 AND x36))) OR ((pwb OR (y36 AND x36)) XOR (y37 XOR x37))
 
 wts/z37 correct
-rhh/wts
+rhh/wts incorrect
 
 0000000011000000000000000000000000000000000000
 0000000011000000000000000000000000000000000000
@@ -326,7 +329,8 @@ function evalCorrect(pwb: boolean, y36: boolean, x36: boolean, y37: boolean, x37
 }
 
 function evalIncorrect(pwb: boolean, y36: boolean, x36: boolean, y37: boolean, x37: boolean): boolean{
-  return ((pwb || (y36 && x36)) && (y37 != x37 )) || (y37 && x37)
+  return ((y37 != x37) && (pwb || (y36 && x36))) || ((pwb || (y36 && x36)) != (y37 != x37))
+  // return ((pwb || (y36 && x36)) && (y37 != x37 )) || (y37 && x37)
  }
 
 console.log("TRUTH TABLE");
@@ -340,18 +344,41 @@ for (var inp = 0; inp < 32; inp++){
 
 console.log("/TRUTH TABLE");
 
-const newLocal1 = 3n << 36n;
-const newLocal2 = 3n << 36n;
+const newLocal1 = 1n << 36n;
+const newLocal2 = 3n << 35n;
+
+const nnnnnnn  = 1n <<3n;
+for (var local1 = 0n; local1 < 32n; local1++){
+  for (var local2 = 0n; local2 < 32n; local2++){
+    const exp = nnnnnnn + local1 + nnnnnnn + local2
+    const result = testNumbers(nnnnnnn + local1, nnnnnnn+ local2)
+    if (exp != result){
+      console.log(local1, local2);
+    
+    }
+  }
+}
 
 const e = testNumbers(newLocal1, newLocal2)
+console.log(newLocal1.toString(2).padStart(40, "0"));
+console.log(newLocal2.toString(2).padStart(40, "0"));
+console.log(e.toString(2).padStart(40, "0"));
+
+// 0010000000000000000000000000000000000000
+// 0011000000000000000000000000000000000000
+// 0101000000000000000000000000000000000000
+
+// 343597383680n
+// 343597383680n
+
 // console.log(MAX.toString(2));
 
 // console.log(newLocal1.toString(2).padStart(46, "0"));
 // console.log(newLocal2.toString(2).padStart(46, "0"));
 // console.log(e.toString(2).padStart(46, "0"));
 
-const ttt = testNumbers(1n<<37n, 0n)
-console.log({ttt: ttt.toString(2)});
+// const ttt = testNumbers(1n<<37n, 0n)
+// console.log({ttt: ttt.toString(2)});
 
 logTime("Part 2");
 
